@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mhasla_wheels_mobile_application/Model/Userlogin.model.dart';
+import 'package:mhasla_wheels_mobile_application/ViewModel/login.viewmodel.dart';
 import 'homepage.dart';
 import 'registration.dart';
 import 'page_route.dart';
@@ -31,6 +33,7 @@ class _LoginPageState extends State<LoginPage>
     with SingleTickerProviderStateMixin {
   final _form = GlobalKey<FormState>();
   final _email = TextEditingController();
+
   final _password = TextEditingController();
   late final AnimationController _entrance = AnimationController(
     vsync: this,
@@ -103,6 +106,20 @@ class _LoginPageState extends State<LoginPage>
         child: child,
       ),
     );
+  }
+
+LoginRequestHandle lrh = LoginRequestHandle();
+  Future<void> login(String email, String password) async {
+    try {
+      Userlogin usermodel = Userlogin(email, password);
+      print("Email: $email");
+      print("Password: $password");
+       lrh.servicecall(usermodel);
+    }
+    catch(e)
+    {
+      print("Handling exception : $e");
+    }
   }
 
   @override
@@ -355,9 +372,14 @@ class _LoginPageState extends State<LoginPage>
                                           _PressButton(
                                             color: _red,
                                             radius: 17 * scale,
-                                            onTap: _busy
-                                                ? null
-                                                : () => _authenticate(),
+                                            onTap: () {
+                                              if (_form.currentState!.validate()) {
+                                                login(
+                                                  _email.text.trim(),
+                                                  _password.text,
+                                                );
+                                              }
+                                            },
                                             child: _busy
                                                 ? const SizedBox(
                                                     width: 20,
