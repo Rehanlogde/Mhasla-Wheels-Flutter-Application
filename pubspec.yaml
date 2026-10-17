@@ -36,7 +36,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   http: any
   flutter_dotenv: ^5.2.1
-
+  flutter_launcher_icons: ^0.13.1
+  shared_preferences: ^2.5.6
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -50,8 +51,13 @@ dev_dependencies:
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/images/mhasla_wheels.jpg"
 
-# The following section is specific to Flutter packages.
+# The following section is specific to Flutter packages. Zc vbnm,.
+
 flutter:
 
   # The following line ensures that the Material Icons font is

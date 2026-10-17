@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mhasla_wheels_mobile_application/Model/Loginresponse.model.dart';
 import 'package:mhasla_wheels_mobile_application/Model/Userlogin.model.dart';
 import 'package:mhasla_wheels_mobile_application/ViewModel/login.viewmodel.dart';
 import 'homepage.dart';
@@ -33,6 +34,7 @@ class _LoginPageState extends State<LoginPage>
     with SingleTickerProviderStateMixin {
   final _form = GlobalKey<FormState>();
   final _email = TextEditingController();
+  var errormsg  = null;
 
   final _password = TextEditingController();
   late final AnimationController _entrance = AnimationController(
@@ -110,16 +112,24 @@ class _LoginPageState extends State<LoginPage>
 
 LoginRequestHandle lrh = LoginRequestHandle();
   Future<void> login(String email, String password) async {
-    try {
+
       Userlogin usermodel = Userlogin(email, password);
       print("Email: $email");
       print("Password: $password");
-       lrh.servicecall(usermodel);
-    }
-    catch(e)
-    {
-      print("Handling exception : $e");
-    }
+
+        var (islogin, errormsgresponse) = await lrh.servicecall(usermodel);
+  if(islogin) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const HomePage()),
+    );
+  }
+    else{
+      setState(() {
+        errormsg = "Unable to Sign in : " + errormsgresponse!;
+      });
+  }
+
   }
 
   @override
@@ -366,15 +376,23 @@ LoginRequestHandle lrh = LoginRequestHandle();
                                           .32,
                                           _field(scale, password: true),
                                         ),
+                                        if(errormsg !=null) ...[
+                                        SizedBox(height: 10,),
+                                          Text(errormsg, style: TextStyle(color: Colors.red),)
+                                        ],
                                         SizedBox(height: 40 * scale),
                                         _reveal(
                                           .36,
                                           _PressButton(
                                             color: _red,
                                             radius: 17 * scale,
-                                            onTap: () {
+                                            onTap: () async{
                                               if (_form.currentState!.validate()) {
-                                                login(
+                                                setState(() {
+                                                  errormsg = null;
+                                                  LoginresponseModel.error = null;
+                                                });
+                                               await  login(
                                                   _email.text.trim(),
                                                   _password.text,
                                                 );

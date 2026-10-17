@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mhasla_wheels_mobile_application/Model/Userdashboard.model.dart';
+import 'package:mhasla_wheels_mobile_application/ViewModel/geruserdetails.vm.dart';
 
 const _green = Color(0xFF103B33);
 const _cream = Color(0xFFF7F5EC);
@@ -20,6 +22,13 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage>
     with SingleTickerProviderStateMixin {
+
+  var username;
+  var useremail;
+  var completedtrips;
+  var upcomingtrips;
+
+
   late final _welcome = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 2200),
@@ -28,9 +37,20 @@ class _HomePageState extends State<HomePage>
   bool _showPopup = false;
   int _tab = 1;
 
+  void initializedashboard(){
+    print("upcming trips : ${Userdashboard.upcomingtrips}") ;
+    setState(() {
+      username = Userdashboard.name;
+      useremail = Userdashboard.useremail;
+      upcomingtrips = Userdashboard.upcomingtrips;
+      completedtrips = Userdashboard.completedtrips;
+    });
+  }
   @override
   void initState() {
     super.initState();
+    print("inside homepage initialization");
+    initializedashboard();
     _showPopup = widget.showWelcome;
     _welcome.addStatusListener((status) {
       if (status == AnimationStatus.completed && mounted) {
@@ -109,6 +129,7 @@ class _HomePageState extends State<HomePage>
             0,
             Row(
               children: [
+
                 Container(
                   width: 36,
                   height: 36,
@@ -174,11 +195,13 @@ class _HomePageState extends State<HomePage>
               ],
             ),
           ),
+
           const SizedBox(height: 23),
+
           _enter(
             1,
             Text(
-              'Hello, ${widget.displayName}.',
+              'Hello, ${username}.',
               style: TextStyle(
                 fontFamily: 'Lora',
                 fontSize: wide ? 44 : 35,
@@ -192,12 +215,14 @@ class _HomePageState extends State<HomePage>
           const SizedBox(height: 9),
           _enter(
             1,
+
             const Text(
               'A little overview of everywhere you’re going.',
               style: TextStyle(fontSize: 12, height: 1.5, color: _muted),
             ),
+
           ),
-          const SizedBox(height: 22),
+      const SizedBox(height: 22),
           if (wide) ...[
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -229,6 +254,7 @@ class _HomePageState extends State<HomePage>
                   ),
                 ),
                 SizedBox(width: 10),
+
                 Text(
                   'RECENT',
                   style: TextStyle(
@@ -241,6 +267,7 @@ class _HomePageState extends State<HomePage>
               ],
             ),
           ),
+
           const SizedBox(height: 13),
           _enter(4, _recentJourney()),
           const SizedBox(height: 16),
@@ -397,13 +424,13 @@ class _HomePageState extends State<HomePage>
           constraints.maxWidth < 260;
       final cards = [
         _stat(
-          '01',
+          upcomingtrips.toString(),
           'Upcoming',
           Icons.route_outlined,
           color: const Color(0xFFFF454D),
           active: true,
         ),
-        _stat('08', 'Completed', Icons.task_alt_rounded, color: Colors.white),
+        _stat(completedtrips.toString(), 'Completed', Icons.task_alt_rounded, color: Colors.white),
         _stat(
           '100',
           'Credits',
