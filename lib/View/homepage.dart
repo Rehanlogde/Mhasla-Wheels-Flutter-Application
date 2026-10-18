@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mhasla_wheels_mobile_application/Model/Fleetcollection.model.dart';
 import 'package:mhasla_wheels_mobile_application/Model/Userdashboard.model.dart';
 import 'package:mhasla_wheels_mobile_application/ViewModel/geruserdetails.vm.dart';
+import 'package:mhasla_wheels_mobile_application/ViewModel/getfleetdetails.vm.dart';
 
 const _green = Color(0xFF103B33);
 const _cream = Color(0xFFF7F5EC);
@@ -36,6 +38,7 @@ class _HomePageState extends State<HomePage>
   bool _started = false;
   bool _showPopup = false;
   int _tab = 1;
+  var fleetinformation = null;
 
   void initializedashboard(){
     print("upcming trips : ${Userdashboard.upcomingtrips}") ;
@@ -46,11 +49,19 @@ class _HomePageState extends State<HomePage>
       completedtrips = Userdashboard.completedtrips;
     });
   }
+  Future<void> initializevehiclesdata()async{
+
+    await getfleetinformation();
+    print("finally recieved in final homepage dart : ${Fleetcollection.fleetsdata}");
+  }
+
   @override
   void initState() {
     super.initState();
     print("inside homepage initialization");
     initializedashboard();
+
+    initializevehiclesdata();
     _showPopup = widget.showWelcome;
     _welcome.addStatusListener((status) {
       if (status == AnimationStatus.completed && mounted) {
@@ -104,7 +115,7 @@ class _HomePageState extends State<HomePage>
                             ? 0
                             : 250,
                       ),
-                      child: _tab == 1 ? _dashboard() : _explore(),
+                      child: _tab == 1 ? _dashboard() : _booking(),
                     ),
                   ),
                 ),
@@ -179,10 +190,10 @@ class _HomePageState extends State<HomePage>
                       widget.displayName.trim().isEmpty
                           ? 'M'
                           : widget.displayName
-                                .trim()
-                                .characters
-                                .first
-                                .toUpperCase(),
+                          .trim()
+                          .characters
+                          .first
+                          .toUpperCase(),
                       style: const TextStyle(
                         fontFamily: 'Lora',
                         fontWeight: FontWeight.w600,
@@ -222,7 +233,7 @@ class _HomePageState extends State<HomePage>
             ),
 
           ),
-      const SizedBox(height: 22),
+          const SizedBox(height: 22),
           if (wide) ...[
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -396,7 +407,7 @@ class _HomePageState extends State<HomePage>
                       children: [
                         Flexible(
                           child: Text(
-                            'Explore routes',
+                            'Book a ride',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
@@ -421,7 +432,7 @@ class _HomePageState extends State<HomePage>
     builder: (context, constraints) {
       final stack =
           MediaQuery.textScalerOf(context).scale(1) > 1.4 ||
-          constraints.maxWidth < 260;
+              constraints.maxWidth < 260;
       final cards = [
         _stat(
           upcomingtrips.toString(),
@@ -462,12 +473,12 @@ class _HomePageState extends State<HomePage>
   );
 
   Widget _stat(
-    String number,
-    String label,
-    IconData icon, {
-    required Color color,
-    bool active = false,
-  }) => Container(
+      String number,
+      String label,
+      IconData icon, {
+        required Color color,
+        bool active = false,
+      }) => Container(
     constraints: const BoxConstraints(minHeight: 122),
     padding: const EdgeInsets.fromLTRB(13, 15, 10, 15),
     decoration: BoxDecoration(
@@ -618,7 +629,7 @@ class _HomePageState extends State<HomePage>
     ),
     child: Row(
       children: [
-        _navItem(0, Icons.explore_outlined, 'Explore'),
+        _navItem(0, Icons.directions_car_outlined, 'Booking'),
         const SizedBox(width: 6),
         _navItem(1, Icons.grid_view_rounded, 'Dashboard'),
       ],
@@ -663,47 +674,219 @@ class _HomePageState extends State<HomePage>
     ),
   );
 
-  Widget _explore() => Column(
-    key: const ValueKey('explore'),
-    crossAxisAlignment: CrossAxisAlignment.stretch,
+  Widget _booking() => Align(
+    key: const ValueKey('booking'),
+    alignment: Alignment.topCenter,
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 1200),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 20),
+          _enter(
+            0,
+            const Text(
+              'Booking',
+              style: TextStyle(
+                fontFamily: 'Lora',
+                fontSize: 36,
+                fontWeight: FontWeight.w600,
+                color: _green,
+                letterSpacing: -1,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          _enter(
+            1,
+            const Text(
+              'Find your ride. Make it a journey.',
+              style: TextStyle(fontSize: 13, height: 1.5, color: _muted),
+            ),
+          ),
+          const SizedBox(height: 24),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const gap = 20.0;
+              final width = constraints.maxWidth;
+              final columns = width >= 1000 ? 3 : (width >= 600 ? 2 : 1);
+              final cardWidth = columns == 1
+                  ? (width > 420 ? 420.0 : width)
+                  : (width - gap * (columns - 1)) / columns;
+
+              // One complete card per fleet record. Wrap lets card content
+              // grow with long names and accessibility text scaling.
+              return Wrap(
+                alignment: columns == 1
+                    ? WrapAlignment.center
+                    : WrapAlignment.start,
+                spacing: gap,
+                runSpacing: gap,
+                children: [
+                  for (final item in Fleetcollection.fleetsdata)
+                    SizedBox(
+                      width: cardWidth,
+                      child: _enter(2, _vehicleCard(item)),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    ),
+  );
+
+  // Only presentation consumes the existing fleet records; fetching,
+  // dashboard state, navigation, and booking behavior remain unchanged.
+  Widget _vehicleCard(dynamic item) => Container(
+    width: double.infinity,
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(24),
+      border: Border.all(color: const Color(0xFFE4E8E0)),
+      boxShadow: [
+        BoxShadow(
+          color: _green.withValues(alpha: .07),
+          blurRadius: 28,
+          offset: const Offset(0, 10),
+        ),
+      ],
+    ),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(23),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AspectRatio(
+            aspectRatio: 1.65,
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFFEDF2E9),
+                    Color(0xFFF7F5EC),
+                    Color(0xFFDCE6D9),
+                  ],
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: _vehicleImage(item),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '${item.vehiclename}',
+                  style: const TextStyle(
+                    fontFamily: 'Lora',
+                    fontSize: 27,
+                    height: 1.2,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -.7,
+                    color: _green,
+                  ),
+                ),
+                if ('${item.vehiclesafety ?? ''}'.trim().isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    '${item.vehiclesafety}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      height: 1.5,
+                      color: _muted,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 18),
+                _vehicleDetail(
+                  Icons.people_outline_rounded,
+                  '${item.capacity} passengers',
+                ),
+                const SizedBox(height: 12),
+                _vehicleDetail(
+                  Icons.directions_car_outlined,
+                  'Year purchased: ${item.yearpurchased}',
+                ),
+                const SizedBox(height: 20),
+                const Divider(height: 1, color: Color(0xFFE4E8E0)),
+                const SizedBox(height: 16),
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: '₹${item.fare}',
+                        style: const TextStyle(
+                          fontSize: 25,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -.6,
+                          color: Color(0xFFFF454D),
+                        ),
+                      ),
+                      const TextSpan(
+                        text: ' / km',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: _muted,
+                        ),
+                      ),
+                    ],
+                  ),
+                  semanticsLabel: '${item.fare} rupees per kilometre',
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _vehicleImage(dynamic item) {
+    final name = '${item.vehiclename}';
+    final placeholder = Center(
+      child: Icon(
+        Icons.directions_car_rounded,
+        size: 80,
+        color: _muted,
+        semanticLabel: '$name image unavailable',
+      ),
+    );
+    // The supplied code provides only a WagonR asset, not a per-car image
+    // field. Avoid showing that photo for every other vehicle.
+    final normalizedName = name.toLowerCase().replaceAll(RegExp(r'\s+'), '');
+    if (!normalizedName.contains('wagonr')) return placeholder;
+    return Image.asset(
+      'assets/images/wagonr.png',
+      fit: BoxFit.contain,
+      semanticLabel: name,
+      errorBuilder: (context, error, stackTrace) => placeholder,
+    );
+  }
+
+  Widget _vehicleDetail(IconData icon, String text) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const SizedBox(height: 20),
-      const Text(
-        'Explore Kokan.',
-        style: TextStyle(
-          fontFamily: 'Lora',
-          fontSize: 36,
-          fontWeight: FontWeight.w600,
-          color: Color(0xFF103B33),
-        ),
-      ),
-      const SizedBox(height: 12),
-      const Text(
-        'Your next journey starts here.',
-        style: TextStyle(color: Color(0xFF829087)),
-      ),
-      const SizedBox(height: 24),
-      Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF7F5EC),
-          borderRadius: BorderRadius.circular(22),
-        ),
-        child: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(Icons.route_rounded, color: Color(0xFF103B33), size: 32),
-            SizedBox(height: 16),
-            Text(
-              'Mhasla → Mumbai',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Travel comfortably with Mhasla Wheels.',
-              style: TextStyle(color: Color(0xFF829087)),
-            ),
-          ],
+      Icon(icon, size: 19, color: _muted),
+      const SizedBox(width: 10),
+      Expanded(
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 13,
+            height: 1.5,
+            color: _muted,
+          ),
         ),
       ),
     ],
