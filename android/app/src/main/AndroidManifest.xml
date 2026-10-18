@@ -1,7 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
         android:label="mhasla_wheels_mobile_application"
-        android:name="${applicationName}"
+        android:name="Mhasla Wheels"
         android:icon="@mipmap/launcher_icon">
         <activity
             android:name=".MainActivity"
