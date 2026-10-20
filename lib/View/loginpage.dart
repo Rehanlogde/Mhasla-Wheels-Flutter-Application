@@ -39,16 +39,21 @@ class _LoginPageState extends State<LoginPage>
   final _password = TextEditingController();
   late final AnimationController _entrance = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 950),
+    duration: const Duration(milliseconds: 620),
   );
   bool _busy = false;
+  bool _entranceStarted = false;
+  final Map<double, Animation<double>> _revealAnimations = {};
+  final Map<double, Animation<Offset>> _revealOffsets = {};
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (MediaQuery.disableAnimationsOf(context)) {
       _entrance.value = 1;
-    } else {
+      _entranceStarted = true;
+    } else if (!_entranceStarted) {
+      _entranceStarted = true;
       _entrance.forward();
     }
   }
@@ -84,7 +89,7 @@ class _LoginPageState extends State<LoginPage>
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         animatedPage(context, const HomePage()),
-        (_) => false,
+            (_) => false,
       );
     } catch (_) {
       if (mounted) _notice('Unable to sign in. Please try again.');
@@ -94,41 +99,55 @@ class _LoginPageState extends State<LoginPage>
   }
 
   Widget _reveal(double start, Widget child) {
-    final animation = CurvedAnimation(
-      parent: _entrance,
-      curve: Interval(start, 1, curve: Curves.easeOutCubic),
+    // Reuse each animation across form, keyboard and layout rebuilds.
+    // CurveTween does not add the status listener used by CurvedAnimation.
+    final animation = _revealAnimations.putIfAbsent(
+      start,
+          () => _entrance.drive(
+        CurveTween(
+          curve: Interval(
+            start * .5,
+            .75 + start * .5,
+            curve: Curves.easeOutCubic,
+          ),
+        ),
+      ),
+    );
+    final offset = _revealOffsets.putIfAbsent(
+      start,
+          () => Tween<Offset>(
+        begin: const Offset(0, .035),
+        end: Offset.zero,
+      ).animate(animation),
     );
     return FadeTransition(
       opacity: animation,
       child: SlideTransition(
-        position: Tween(
-          begin: const Offset(0, .07),
-          end: Offset.zero,
-        ).animate(animation),
-        child: child,
+        position: offset,
+        child: RepaintBoundary(child: child),
       ),
     );
   }
 
-LoginRequestHandle lrh = LoginRequestHandle();
+  LoginRequestHandle lrh = LoginRequestHandle();
   Future<void> login(String email, String password) async {
 
-      Userlogin usermodel = Userlogin(email, password);
-      print("Email: $email");
-      print("Password: $password");
+    Userlogin usermodel = Userlogin(email, password);
+    print("Email: $email");
+    print("Password: $password");
 
-        var (islogin, errormsgresponse) = await lrh.servicecall(usermodel);
-  if(islogin) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const HomePage()),
-    );
-  }
+    var (islogin, errormsgresponse) = await lrh.servicecall(usermodel);
+    if(islogin) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const HomePage()),
+      );
+    }
     else{
       setState(() {
         errormsg = "Unable to Sign in : " + errormsgresponse!;
       });
-  }
+    }
 
   }
 
@@ -170,8 +189,10 @@ LoginRequestHandle lrh = LoginRequestHandle();
                                 child: Stack(
                                   children: [
                                     const Positioned.fill(
-                                      child: CustomPaint(
-                                        painter: RentalRoadPainter(),
+                                      child: RepaintBoundary(
+                                        child: CustomPaint(
+                                          painter: RentalRoadPainter(),
+                                        ),
                                       ),
                                     ),
                                     Positioned(
@@ -191,7 +212,7 @@ LoginRequestHandle lrh = LoginRequestHandle();
                                             SizedBox(width: 12 * scale),
                                             Column(
                                               crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
+                                              CrossAxisAlignment.start,
                                               children: [
                                                 Text(
                                                   'MHASLA WHEELS',
@@ -262,7 +283,7 @@ LoginRequestHandle lrh = LoginRequestHandle();
                                   child: AutofillGroup(
                                     child: Column(
                                       crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
+                                      CrossAxisAlignment.stretch,
                                       children: [
                                         _reveal(
                                           .12,
@@ -299,11 +320,11 @@ LoginRequestHandle lrh = LoginRequestHandle();
                                             onTap: _busy
                                                 ? null
                                                 : () => _authenticate(
-                                                    google: true,
-                                                  ),
+                                              google: true,
+                                            ),
                                             child: Row(
                                               mainAxisAlignment:
-                                                  MainAxisAlignment.center,
+                                              MainAxisAlignment.center,
                                               children: [
                                                 Text(
                                                   'G',
@@ -377,7 +398,7 @@ LoginRequestHandle lrh = LoginRequestHandle();
                                           _field(scale, password: true),
                                         ),
                                         if(errormsg !=null) ...[
-                                        SizedBox(height: 10,),
+                                          SizedBox(height: 10,),
                                           Text(errormsg, style: TextStyle(color: Colors.red),)
                                         ],
                                         SizedBox(height: 40 * scale),
@@ -392,7 +413,7 @@ LoginRequestHandle lrh = LoginRequestHandle();
                                                   errormsg = null;
                                                   LoginresponseModel.error = null;
                                                 });
-                                               await  login(
+                                                await  login(
                                                   _email.text.trim(),
                                                   _password.text,
                                                 );
@@ -400,40 +421,40 @@ LoginRequestHandle lrh = LoginRequestHandle();
                                             },
                                             child: _busy
                                                 ? const SizedBox(
-                                                    width: 20,
-                                                    height: 20,
-                                                    child:
-                                                        CircularProgressIndicator(
-                                                          color: Colors.white,
-                                                          strokeWidth: 2,
-                                                        ),
-                                                  )
+                                              width: 20,
+                                              height: 20,
+                                              child:
+                                              CircularProgressIndicator(
+                                                color: Colors.white,
+                                                strokeWidth: 2,
+                                              ),
+                                            )
                                                 : Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .center,
-                                                    children: [
-                                                      Text(
-                                                        'Sign in',
-                                                        style: TextStyle(
-                                                          fontFamily: 'Lora',
-                                                          color: Colors.white,
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                          fontSize: 14 * scale,
-                                                        ),
-                                                      ),
-                                                      SizedBox(
-                                                        width: 7 * scale,
-                                                      ),
-                                                      Icon(
-                                                        Icons
-                                                            .arrow_forward_rounded,
-                                                        color: Colors.white,
-                                                        size: 16 * scale,
-                                                      ),
-                                                    ],
+                                              mainAxisAlignment:
+                                              MainAxisAlignment
+                                                  .center,
+                                              children: [
+                                                Text(
+                                                  'Sign in',
+                                                  style: TextStyle(
+                                                    fontFamily: 'Lora',
+                                                    color: Colors.white,
+                                                    fontWeight:
+                                                    FontWeight.w700,
+                                                    fontSize: 14 * scale,
                                                   ),
+                                                ),
+                                                SizedBox(
+                                                  width: 7 * scale,
+                                                ),
+                                                Icon(
+                                                  Icons
+                                                      .arrow_forward_rounded,
+                                                  color: Colors.white,
+                                                  size: 16 * scale,
+                                                ),
+                                              ],
+                                            ),
                                           ),
                                         ),
                                         SizedBox(height: 7 * scale),
@@ -451,22 +472,22 @@ LoginRequestHandle lrh = LoginRequestHandle();
                                               onPressed: _busy
                                                   ? null
                                                   : () {
-                                                      if (widget
-                                                              .onCreateAccount !=
-                                                          null) {
-                                                        widget
-                                                            .onCreateAccount!();
-                                                      } else {
-                                                        Navigator.of(
-                                                          context,
-                                                        ).push(
-                                                          animatedPage(
-                                                            context,
-                                                            const RegistrationPage(),
-                                                          ),
-                                                        );
-                                                      }
-                                                    },
+                                                if (widget
+                                                    .onCreateAccount !=
+                                                    null) {
+                                                  widget
+                                                      .onCreateAccount!();
+                                                } else {
+                                                  Navigator.of(
+                                                    context,
+                                                  ).push(
+                                                    animatedPage(
+                                                      context,
+                                                      const RegistrationPage(),
+                                                    ),
+                                                  );
+                                                }
+                                              },
                                               child: Text(
                                                 'New here?  Create an account ↗',
                                                 style: TextStyle(
@@ -596,20 +617,28 @@ class _PressButtonState extends State<_PressButton> {
   Widget build(BuildContext context) => AnimatedScale(
     scale: _pressed ? .98 : 1,
     duration: Duration(
-      milliseconds: MediaQuery.disableAnimationsOf(context) ? 0 : 120,
+      milliseconds: MediaQuery.disableAnimationsOf(context)
+          ? 0
+          : (_pressed ? 100 : 180),
     ),
-    child: Material(
-      color: widget.color,
-      borderRadius: BorderRadius.circular(widget.radius),
-      child: InkWell(
+    curve: Curves.easeOutCubic,
+    child: RepaintBoundary(
+      child: Material(
+        color: widget.color,
         borderRadius: BorderRadius.circular(widget.radius),
-        onTap: widget.onTap,
-        onHighlightChanged: (value) => setState(() => _pressed = value),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 52),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            child: widget.child,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(widget.radius),
+          onTap: widget.onTap,
+          onHighlightChanged: (value) {
+            if (_pressed == value) return;
+            setState(() => _pressed = value);
+          },
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 52),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              child: widget.child,
+            ),
           ),
         ),
       ),

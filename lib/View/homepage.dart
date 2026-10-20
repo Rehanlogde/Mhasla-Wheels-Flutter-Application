@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mhasla_wheels_mobile_application/Model/Fleetcollection.model.dart';
 import 'package:mhasla_wheels_mobile_application/Model/Userdashboard.model.dart';
+import 'package:mhasla_wheels_mobile_application/View/bookingpage.view.dart';
 import 'package:mhasla_wheels_mobile_application/ViewModel/geruserdetails.vm.dart';
 import 'package:mhasla_wheels_mobile_application/ViewModel/getfleetdetails.vm.dart';
 
@@ -24,24 +25,22 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage>
     with SingleTickerProviderStateMixin {
-
   var username;
   var useremail;
   var completedtrips;
   var upcomingtrips;
 
-
   late final _welcome = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 2200),
+    duration: const Duration(milliseconds: 1250),
   );
   bool _started = false;
   bool _showPopup = false;
   int _tab = 1;
   var fleetinformation = null;
 
-  void initializedashboard(){
-    print("upcming trips : ${Userdashboard.upcomingtrips}") ;
+  void initializedashboard() {
+    print("upcming trips : ${Userdashboard.upcomingtrips}");
     setState(() {
       username = Userdashboard.name;
       useremail = Userdashboard.useremail;
@@ -49,10 +48,12 @@ class _HomePageState extends State<HomePage>
       completedtrips = Userdashboard.completedtrips;
     });
   }
-  Future<void> initializevehiclesdata()async{
 
+  Future<void> initializevehiclesdata() async {
     await getfleetinformation();
-    print("finally recieved in final homepage dart : ${Fleetcollection.fleetsdata}");
+    print(
+      "finally recieved in final homepage dart : ${Fleetcollection.fleetsdata}",
+    );
   }
 
   @override
@@ -107,15 +108,29 @@ class _HomePageState extends State<HomePage>
             child: Column(
               children: [
                 Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
+                  // Animate a fixed viewport so different content heights do
+                  // not resize or recenter the outgoing page mid-transition.
+                  child: ClipRect(
                     child: AnimatedSwitcher(
                       duration: Duration(
                         milliseconds: MediaQuery.disableAnimationsOf(context)
                             ? 0
-                            : 250,
+                            : 380,
                       ),
-                      child: _tab == 1 ? _dashboard() : _booking(),
+                      reverseDuration: Duration(
+                        milliseconds: MediaQuery.disableAnimationsOf(context)
+                            ? 0
+                            : 380,
+                      ),
+                      switchInCurve: Curves.easeInOutCubic,
+                      switchOutCurve: Curves.easeInOutCubic,
+                      transitionBuilder: _tabTransition,
+                      layoutBuilder: _tabLayout,
+                      child: SingleChildScrollView(
+                        key: ValueKey<int>(_tab),
+                        padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
+                        child: _tab == 1 ? _dashboard() : _booking(),
+                      ),
                     ),
                   ),
                 ),
@@ -129,6 +144,36 @@ class _HomePageState extends State<HomePage>
     ),
   );
 
+  static Widget _tabTransition(Widget child, Animation<double> animation) {
+    // Booking / Explore (right tab): enters from the right, moving left.
+    // Dashboard / Profile (left tab): enters from the left, moving right.
+    // Reversing the outgoing tab moves it in the same direction as the
+    // incoming tab. Keep the offset tied to the child, not the active tab.
+    final isBookingTab = child.key == const ValueKey<int>(0);
+    return SlideTransition(
+      position: Tween<Offset>(
+        begin: Offset(isBookingTab ? 1.0 : -1.0, 0),
+        end: Offset.zero,
+      ).animate(animation),
+      child: RepaintBoundary(child: child),
+    );
+  }
+
+  static Widget _tabLayout(
+    Widget? currentChild,
+    List<Widget> previousChildren,
+  ) => Stack(
+    fit: StackFit.expand,
+    alignment: Alignment.topCenter,
+    children: [
+      for (final child in previousChildren)
+        // An outgoing page is visual only; taps and screen readers use the
+        // current page, even when tabs are switched quickly.
+        IgnorePointer(child: ExcludeSemantics(child: child)),
+      if (currentChild != null) currentChild,
+    ],
+  );
+
   Widget _dashboard() => LayoutBuilder(
     builder: (context, constraints) {
       final wide = constraints.maxWidth >= 760;
@@ -140,7 +185,6 @@ class _HomePageState extends State<HomePage>
             0,
             Row(
               children: [
-
                 Container(
                   width: 36,
                   height: 36,
@@ -190,10 +234,10 @@ class _HomePageState extends State<HomePage>
                       widget.displayName.trim().isEmpty
                           ? 'M'
                           : widget.displayName
-                          .trim()
-                          .characters
-                          .first
-                          .toUpperCase(),
+                                .trim()
+                                .characters
+                                .first
+                                .toUpperCase(),
                       style: const TextStyle(
                         fontFamily: 'Lora',
                         fontWeight: FontWeight.w600,
@@ -231,7 +275,6 @@ class _HomePageState extends State<HomePage>
               'A little overview of everywhere you’re going.',
               style: TextStyle(fontSize: 12, height: 1.5, color: _muted),
             ),
-
           ),
           const SizedBox(height: 22),
           if (wide) ...[
@@ -303,23 +346,8 @@ class _HomePageState extends State<HomePage>
     },
   );
 
-  Widget _enter(int order, Widget child) => TweenAnimationBuilder<double>(
-    tween: Tween(begin: 0, end: 1),
-    duration: Duration(
-      milliseconds: MediaQuery.disableAnimationsOf(context)
-          ? 0
-          : 480 + order * 65,
-    ),
-    curve: Curves.easeOutCubic,
-    builder: (context, value, child) => Opacity(
-      opacity: value,
-      child: Transform.translate(
-        offset: Offset(0, 14 * (1 - value)),
-        child: child,
-      ),
-    ),
-    child: child,
-  );
+  // Keep sections still so the whole page slides as one continuous surface.
+  Widget _enter(int order, Widget child) => RepaintBoundary(child: child);
 
   Widget _journeyHero() => Container(
     decoration: BoxDecoration(
@@ -432,7 +460,7 @@ class _HomePageState extends State<HomePage>
     builder: (context, constraints) {
       final stack =
           MediaQuery.textScalerOf(context).scale(1) > 1.4 ||
-              constraints.maxWidth < 260;
+          constraints.maxWidth < 260;
       final cards = [
         _stat(
           upcomingtrips.toString(),
@@ -441,7 +469,12 @@ class _HomePageState extends State<HomePage>
           color: const Color(0xFFFF454D),
           active: true,
         ),
-        _stat(completedtrips.toString(), 'Completed', Icons.task_alt_rounded, color: Colors.white),
+        _stat(
+          completedtrips.toString(),
+          'Completed',
+          Icons.task_alt_rounded,
+          color: Colors.white,
+        ),
         _stat(
           '100',
           'Credits',
@@ -473,12 +506,12 @@ class _HomePageState extends State<HomePage>
   );
 
   Widget _stat(
-      String number,
-      String label,
-      IconData icon, {
-        required Color color,
-        bool active = false,
-      }) => Container(
+    String number,
+    String label,
+    IconData icon, {
+    required Color color,
+    bool active = false,
+  }) => Container(
     constraints: const BoxConstraints(minHeight: 122),
     padding: const EdgeInsets.fromLTRB(13, 15, 10, 15),
     decoration: BoxDecoration(
@@ -629,9 +662,9 @@ class _HomePageState extends State<HomePage>
     ),
     child: Row(
       children: [
-        _navItem(0, Icons.directions_car_outlined, 'Booking'),
-        const SizedBox(width: 6),
         _navItem(1, Icons.grid_view_rounded, 'Dashboard'),
+        const SizedBox(width: 6),
+        _navItem(0, Icons.directions_car_outlined, 'Booking'),
       ],
     ),
   );
@@ -641,8 +674,9 @@ class _HomePageState extends State<HomePage>
       selected: _tab == index,
       child: AnimatedContainer(
         duration: Duration(
-          milliseconds: MediaQuery.disableAnimationsOf(context) ? 0 : 220,
+          milliseconds: MediaQuery.disableAnimationsOf(context) ? 0 : 300,
         ),
+        curve: Curves.easeOutCubic,
         decoration: BoxDecoration(
           color: _tab == index ? _green : Colors.white,
           borderRadius: BorderRadius.circular(17),
@@ -686,7 +720,7 @@ class _HomePageState extends State<HomePage>
           _enter(
             0,
             const Text(
-              'Booking',
+              'Book now !',
               style: TextStyle(
                 fontFamily: 'Lora',
                 fontSize: 36,
@@ -844,6 +878,12 @@ class _HomePageState extends State<HomePage>
                   ),
                   semanticsLabel: '${item.fare} rupees per kilometre',
                 ),
+                ElevatedButton(onPressed: (){
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => BookingPage(vehicleid : item.vehicleid)),
+                  );
+                }, child: Text("Want to book ?"))
               ],
             ),
           ),
@@ -882,11 +922,7 @@ class _HomePageState extends State<HomePage>
       Expanded(
         child: Text(
           text,
-          style: const TextStyle(
-            fontSize: 13,
-            height: 1.5,
-            color: _muted,
-          ),
+          style: const TextStyle(fontSize: 13, height: 1.5, color: _muted),
         ),
       ),
     ],
@@ -894,54 +930,105 @@ class _HomePageState extends State<HomePage>
 
   Widget _welcomePopup() => AnimatedBuilder(
     animation: _welcome,
+    child: Container(
+      width: (MediaQuery.sizeOf(context).shortestSide * .279).clamp(0.0, 126.0),
+      margin: const EdgeInsets.all(24),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F0F0),
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: .18),
+            blurRadius: 36,
+            offset: const Offset(0, 16),
+          ),
+        ],
+      ),
+      child: AspectRatio(
+        aspectRatio: 1,
+        child: Image.asset(
+          'assets/images/mhasla_wheels.jpg',
+          fit: BoxFit.cover,
+          semanticLabel: 'Welcome to Mhasla Wheels',
+        ),
+      ),
+    ),
     builder: (context, child) {
       final progress = _welcome.value;
-      final opacity = progress < .16
-          ? Curves.easeOut.transform(progress / .16)
-          : progress > .74
-          ? 1 - Curves.easeIn.transform(((progress - .74) / .26).clamp(0, 1))
-          : 1.0;
-      final scale = progress < .25
-          ? .65 + .35 * Curves.easeOutBack.transform(progress / .25)
-          : progress > .74
-          ? 1 - .12 * ((progress - .74) / .26)
-          : 1.0;
+      final entrance = Curves.easeOut.transform(
+        (progress / .12).clamp(0.0, 1.0),
+      );
+      final exit = Curves.easeInCubic.transform(
+        ((progress - .72) / .28).clamp(0.0, 1.0),
+      );
+      final visibility =
+          entrance * (1 - ((progress - .94) / .06).clamp(0.0, 1.0));
+      // A large first bounce, followed by smaller rebounds that settle at center.
+      final bounce = TweenSequence<double>([
+        TweenSequenceItem(
+          tween: Tween(
+            begin: 110.0,
+            end: -42.0,
+          ).chain(CurveTween(curve: Curves.easeOutCubic)),
+          weight: 24,
+        ),
+        TweenSequenceItem(
+          tween: Tween(
+            begin: -42.0,
+            end: 18.0,
+          ).chain(CurveTween(curve: Curves.easeInOutSine)),
+          weight: 18,
+        ),
+        TweenSequenceItem(
+          tween: Tween(
+            begin: 18.0,
+            end: -15.0,
+          ).chain(CurveTween(curve: Curves.easeInOutSine)),
+          weight: 16,
+        ),
+        TweenSequenceItem(
+          tween: Tween(
+            begin: -15.0,
+            end: 5.0,
+          ).chain(CurveTween(curve: Curves.easeInOutSine)),
+          weight: 14,
+        ),
+        TweenSequenceItem(
+          tween: Tween(
+            begin: 5.0,
+            end: 0.0,
+          ).chain(CurveTween(curve: Curves.easeOutCubic)),
+          weight: 12,
+        ),
+        TweenSequenceItem(tween: ConstantTween(0.0), weight: 16),
+      ]).transform((progress / .72).clamp(0.0, 1.0));
       return AbsorbPointer(
-        child: Opacity(
-          opacity: opacity,
-          child: ColoredBox(
-            color: Colors.white.withValues(alpha: .86),
-            child: Center(
-              child: Transform.scale(
-                scale: scale,
-                child: Container(
-                  width: MediaQuery.sizeOf(context).shortestSide * .7 > 300
-                      ? 300
-                      : MediaQuery.sizeOf(context).shortestSide * .7,
-                  margin: const EdgeInsets.all(24),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF0F0F0),
-                    borderRadius: BorderRadius.circular(28),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: .12),
-                        blurRadius: 36,
-                        offset: const Offset(0, 12),
-                      ),
-                    ],
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Use the actual viewport and system inset on either platform.
+            final topTarget = MediaQuery.viewPaddingOf(context).top + 6;
+            final exitOffset = topTarget - constraints.maxHeight / 2;
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                ColoredBox(
+                  color: Colors.black.withValues(
+                    alpha: .30 * entrance * (1 - exit),
                   ),
-                  child: AspectRatio(
-                    aspectRatio: 1,
-                    child: Image.asset(
-                      'assets/images/mhasla_wheels.jpg',
-                      semanticLabel: 'Welcome to Mhasla Wheels',
+                ),
+                Center(
+                  child: Transform.translate(
+                    offset: Offset(0, bounce * (1 - exit) + exitOffset * exit),
+                    child: Transform.scale(
+                      scale: 1 - exit,
+                      child: Opacity(opacity: visibility, child: child),
                     ),
                   ),
                 ),
-              ),
-            ),
-          ),
+              ],
+            );
+          },
         ),
       );
     },

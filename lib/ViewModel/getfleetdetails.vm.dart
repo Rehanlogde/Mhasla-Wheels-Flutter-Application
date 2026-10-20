@@ -13,14 +13,25 @@ Future<void> getfleetinformation() async{
 
   Fleetcollection.fleetsdata.clear();
 for(int i = 0; i < listofdata.length; i++)
-     {
+     {print("Storing : ...");
        Fleetinformation fs = Fleetinformation();
        fs.capacity = listofdata[i]['capacity'];
+       print("Storing : ${listofdata[i]['capacity']}");
        fs.fare = listofdata[i]["priceperkm"];
-       fs.vehiclename = listofdata[i]['vehiclename                      '];
+
+     print("Storing : ${listofdata[i]['priceperkm']}");
+       fs.vehiclename = listofdata[i]['vehiclename'];
+
+     print("Storing : ${listofdata[i]['vehiclename']}");
        fs.vehiclesafety = listofdata[i]['vehiclesafety'];
+
+     print("Storing : ${listofdata[i]['vehiclesafety']}");
        fs.vehicleid = listofdata[i]['vehicleid'];
+
+     print("Storing : ${listofdata[i]['vehicleid']}");
        fs.yearpurchased = listofdata[i]['year'];
+
+     print("Storing : ${listofdata[i]['year']}");
        Fleetcollection.fleetsdata.add(fs);
      }
 
